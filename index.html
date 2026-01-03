@@ -22,35 +22,37 @@ h1 { text-align: center; }
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
 
-.row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
 label {
   font-weight: bold;
-  margin-top: 8px;
+  margin-top: 12px;
   display: block;
 }
 
 input, select, button {
+  width: 100%;
   padding: 12px;
+  margin-top: 6px;
   font-size: 16px;
   border-radius: 8px;
   border: 1px solid #ccc;
-  width: 100%;
 }
 
 button {
   background: #4f46e5;
   color: #fff;
   border: none;
-  margin-top: 10px;
+  margin-top: 16px;
 }
 
 button.secondary {
   background: #374151;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 ul { list-style: none; padding: 0; }
@@ -59,9 +61,7 @@ li {
   background: #f9fafb;
   padding: 10px;
   border-radius: 6px;
-  margin-bottom: 6px;
-  display: flex;
-  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
 .delete {
@@ -124,6 +124,9 @@ li {
   <label>Amount</label>
   <input type="number" id="amount" placeholder="Enter amount">
 
+  <label>Note</label>
+  <input type="text" id="note" placeholder="Optional note">
+
   <label>Purpose</label>
   <input type="text" id="purpose" placeholder="Purpose of expense">
 
@@ -149,6 +152,11 @@ li {
   <h3>Total ₹ <span id="total">0</span></h3>
   <p>Today ₹ <span id="todayTotal">0</span></p>
   <p>This Month ₹ <span id="monthTotal">0</span></p>
+</div>
+
+<!-- EXPORT -->
+<div class="card">
+  <button onclick="exportToExcel()">📤 Export to Excel</button>
 </div>
 
 <!-- LIST -->
@@ -186,7 +194,7 @@ document.getElementById("expenseDate").value = todayStr();
 let currentUser = localStorage.getItem("user");
 if (currentUser) {
   loginOverlay.style.display = "none";
-  currentUserSpan();
+  document.getElementById("currentUser").innerText = currentUser;
 }
 
 function login() {
@@ -195,7 +203,7 @@ function login() {
   localStorage.setItem("user", name);
   currentUser = name;
   loginOverlay.style.display = "none";
-  currentUserSpan();
+  document.getElementById("currentUser").innerText = name;
 }
 
 function switchUser() {
@@ -203,16 +211,13 @@ function switchUser() {
   loginOverlay.style.display = "flex";
 }
 
-function currentUserSpan() {
-  document.getElementById("currentUser").innerText = currentUser;
-}
-
 /* ADD EXPENSE */
 function addExpense() {
   const amt = amount.value;
   const date = expenseDate.value;
-  const purpose = document.getElementById("purpose").value;
-  const mode = document.getElementById("paymentMode").value;
+  const noteVal = note.value;
+  const purposeVal = purpose.value;
+  const mode = paymentMode.value;
 
   if (!amt || !date || !mode) {
     alert("Please fill amount, date and payment mode");
@@ -222,7 +227,8 @@ function addExpense() {
   ref.push({
     person: currentUser,
     amount: Number(amt),
-    purpose: purpose,
+    note: noteVal,
+    purpose: purposeVal,
     paymentMode: mode,
     date: date,
     month: date.slice(0,7),
@@ -230,8 +236,34 @@ function addExpense() {
   });
 
   amount.value = "";
+  note.value = "";
   purpose.value = "";
   paymentMode.value = "";
+}
+
+/* EXPORT */
+function exportToExcel() {
+  ref.once("value", snap => {
+    const data = snap.val();
+    if (!data) {
+      alert("No data to export");
+      return;
+    }
+
+    let csv = "Date,Name,Amount,Note,Purpose,Mode of Payment\n";
+
+    Object.values(data).forEach(e => {
+      csv += `${e.date},${e.person},${e.amount},"${e.note || ""}","${e.purpose || ""}",${e.paymentMode || ""}\n`;
+    });
+
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Family_Expenses.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  });
 }
 
 /* LISTENER */
@@ -252,8 +284,8 @@ ref.on("value", snap => {
 
     const li = document.createElement("li");
     li.innerHTML = `
-      ${e.date} | ${e.person} | ₹${e.amount}<br>
-      ${e.purpose || "No purpose"} | ${e.paymentMode}
+      <b>${e.date}</b> — ${e.person} — ₹${e.amount}<br>
+      ${e.note || "No note"} | ${e.purpose || "No purpose"} | ${e.paymentMode}
       <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>
     `;
     expenseList.appendChild(li);
