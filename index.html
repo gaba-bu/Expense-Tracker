@@ -15,7 +15,6 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
-    // 🔴 PASTE YOUR firebaseConfig HERE
     const firebaseConfig = {
       apiKey: "AIzaSyAhHffm0U08iJYDeoBC8ijyueaxR7kPiAM",
       authDomain: "expense-tracker-7b7c2.firebaseapp.com",
@@ -26,11 +25,21 @@
       appId: "1:337736890048:web:c17ac55c2fd2fca4a99f25"
     };
 
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
+    try {
+      firebase.initializeApp(firebaseConfig);
+      const database = firebase.database();
 
-    // Initialize Database
-    const database = firebase.database();
+      document.getElementById("status").innerText =
+        "✅ Firebase connected successfully!";
+    } catch (error) {
+      console.error(error);
+      document.getElementById("status").innerText =
+        "❌ Firebase connection failed — check console";
+    }
+  </script>
+
+</body>
+</html>
 
     document.getElementById("status").innerText = "✅ Connected to Firebase!";
   </script>
