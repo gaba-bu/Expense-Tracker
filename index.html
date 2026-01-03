@@ -54,8 +54,12 @@
       cursor: pointer;
     }
 
+    button.secondary {
+      background: #059669;
+    }
+
     button:hover {
-      background: #4338ca;
+      opacity: 0.9;
     }
 
     .status {
@@ -90,13 +94,10 @@
       color: red;
     }
 
-    /* LOGIN OVERLAY */
+    /* LOGIN */
     #loginOverlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       background: rgba(0,0,0,0.6);
       display: flex;
       align-items: center;
@@ -112,160 +113,182 @@
       max-width: 300px;
       text-align: center;
     }
-
-    #loginBox h2 {
-      margin-bottom: 12px;
-    }
   </style>
 </head>
 
 <body>
 
-  <!-- LOGIN -->
-  <div id="loginOverlay">
-    <div id="loginBox">
-      <h2>Who are you?</h2>
-      <select id="loginName">
-        <option value="">Select</option>
-        <option value="Papa">Papa</option>
-        <option value="Mummy">Mummy</option>
-        <option value="Bunty">Bunty</option>
-      </select>
-      <button style="margin-top:12px;" onclick="login()">Continue</button>
-    </div>
+<!-- LOGIN -->
+<div id="loginOverlay">
+  <div id="loginBox">
+    <h2>Who are you?</h2>
+    <select id="loginName">
+      <option value="">Select</option>
+      <option value="Papa">Papa</option>
+      <option value="Mummy">Mummy</option>
+      <option value="Bunty">Bunty</option>
+    </select>
+    <button style="margin-top:12px;" onclick="login()">Continue</button>
+  </div>
+</div>
+
+<h1>Family Expense Tracker</h1>
+<div class="date">Today: <span id="todayDate"></span></div>
+
+<!-- ADD EXPENSE -->
+<div class="card">
+  <div><strong>Logged in as:</strong> <span id="currentUser"></span></div>
+
+  <div class="row" style="margin-top:10px;">
+    <input type="number" id="amount" placeholder="Amount" />
+    <input type="text" id="note" placeholder="Note (optional)" />
   </div>
 
-  <h1>Family Expense Tracker</h1>
-  <div class="date">Today: <span id="todayDate"></span></div>
+  <button style="margin-top:10px;" onclick="addExpense()">Add Expense</button>
+  <div class="status" id="status">Ready</div>
+</div>
 
-  <!-- ADD EXPENSE -->
-  <div class="card">
-    <div><strong>Logged in as:</strong> <span id="currentUser"></span></div>
+<!-- TOTALS -->
+<div class="card">
+  <h2>Total: ₹ <span id="total">0</span></h2>
+  <h3>Today: ₹ <span id="todayTotal">0</span></h3>
+  <h3>This Month: ₹ <span id="monthTotal">0</span></h3>
+</div>
 
-    <div class="row" style="margin-top:10px;">
-      <input type="number" id="amount" placeholder="Amount" />
-      <input type="text" id="note" placeholder="Note (optional)" />
-    </div>
+<!-- EXPORT -->
+<div class="card">
+  <button class="secondary" onclick="exportToExcel()">📤 Export to Excel</button>
+</div>
 
-    <button style="margin-top:10px;" onclick="addExpense()">Add Expense</button>
-    <div class="status" id="status">Ready</div>
-  </div>
+<!-- ALL EXPENSES -->
+<div class="card">
+  <h3>All Expenses</h3>
+  <ul id="expenseList"></ul>
+</div>
 
-  <!-- TOTALS -->
-  <div class="card">
-    <h2>Total: ₹ <span id="total">0</span></h2>
-    <h3>Today: ₹ <span id="todayTotal">0</span></h3>
-    <h3>This Month: ₹ <span id="monthTotal">0</span></h3>
-  </div>
+<!-- DATE VIEW -->
+<div class="card">
+  <h3>View by Date</h3>
+  <input type="date" id="selectedDate" />
+  <h3>Day Total: ₹ <span id="selectedTotal">0</span></h3>
+  <ul id="selectedList"></ul>
+</div>
 
-  <!-- ALL EXPENSES -->
-  <div class="card">
-    <h3>All Expenses</h3>
-    <ul id="expenseList"></ul>
-  </div>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
-  <!-- DATE VIEW -->
-  <div class="card">
-    <h3>View by Date</h3>
-    <input type="date" id="selectedDate" />
-    <h3>Day Total: ₹ <span id="selectedTotal">0</span></h3>
-    <ul id="selectedList"></ul>
-  </div>
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAhHffm0U08iJYDeoBC8ijyueaxR7kPiAM",
+    authDomain: "expense-tracker-7b7c2.firebaseapp.com",
+    databaseURL: "https://expense-tracker-7b7c2-default-rtdb.firebaseio.com",
+    projectId: "expense-tracker-7b7c2",
+    storageBucket: "expense-tracker-7b7c2.firebasestorage.app",
+    messagingSenderId: "337736890048",
+    appId: "1:337736890048:web:c17ac55c2fd2fca4a99f25"
+  };
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+  const ref = db.ref("expenses");
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyAhHffm0U08iJYDeoBC8ijyueaxR7kPiAM",
-      authDomain: "expense-tracker-7b7c2.firebaseapp.com",
-      databaseURL: "https://expense-tracker-7b7c2-default-rtdb.firebaseio.com",
-      projectId: "expense-tracker-7b7c2",
-      storageBucket: "expense-tracker-7b7c2.firebasestorage.app",
-      messagingSenderId: "337736890048",
-      appId: "1:337736890048:web:c17ac55c2fd2fca4a99f25"
-    };
+  const today = new Date().toISOString().split("T")[0];
+  todayDate.innerText = today;
+  selectedDate.value = today;
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
-    const ref = db.ref("expenses");
+  let currentUser = localStorage.getItem("user");
+  if (currentUser) {
+    loginOverlay.style.display = "none";
+    currentUserEl();
+  }
 
-    const today = new Date().toISOString().split("T")[0];
-    todayDate.innerText = today;
-    selectedDate.value = today;
+  function login() {
+    const name = loginName.value;
+    if (!name) return alert("Select a name");
+    localStorage.setItem("user", name);
+    currentUser = name;
+    loginOverlay.style.display = "none";
+    currentUserEl();
+  }
 
-    let currentUser = localStorage.getItem("user");
+  function currentUserEl() {
+    currentUserElText = document.getElementById("currentUser");
+    currentUserElText.innerText = currentUser;
+  }
 
-    if (currentUser) {
-      loginOverlay.style.display = "none";
-      currentUserEl();
-    }
+  function addExpense() {
+    if (!amount.value) return alert("Enter amount");
 
-    function login() {
-      const name = loginName.value;
-      if (!name) return alert("Select a name");
-      localStorage.setItem("user", name);
-      currentUser = name;
-      loginOverlay.style.display = "none";
-      currentUserEl();
-    }
+    ref.push({
+      person: currentUser,
+      amount: Number(amount.value),
+      note: note.value,
+      date: today,
+      month: today.slice(0,7),
+      timestamp: Date.now()
+    });
 
-    function currentUserEl() {
-      document.getElementById("currentUser").innerText = currentUser;
-    }
+    amount.value = "";
+    note.value = "";
+    status.innerText = "Expense added ✅";
+  }
 
-    function addExpense() {
-      const amount = amountEl.value;
-      const note = noteEl.value;
+  function exportToExcel() {
+    ref.once("value", snapshot => {
+      const data = snapshot.val();
+      if (!data) return alert("No data to export");
 
-      if (!amount) return alert("Enter amount");
-
-      ref.push({
-        person: currentUser,
-        amount: Number(amount),
-        note,
-        date: today,
-        month: today.slice(0,7),
-        timestamp: Date.now()
-      });
-
-      amountEl.value = "";
-      noteEl.value = "";
-      status.innerText = "Expense added ✅";
-    }
-
-    ref.on("value", snap => {
-      const data = snap.val();
-      if (!data) return;
-
-      let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
-      expenseList.innerHTML = "";
-      selectedList.innerHTML = "";
+      let csv = "Date,Name,Amount,Note\n";
 
       for (let id in data) {
         const e = data[id];
-        total += e.amount;
-        if (e.date === today) todaySum += e.amount;
-        if (e.month === today.slice(0,7)) monthSum += e.amount;
-
-        const li = document.createElement("li");
-        li.innerHTML = `<span>${e.person} - ₹${e.amount} (${e.note || "No note"})</span>
-                        <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
-        expenseList.appendChild(li);
-
-        if (e.date === selectedDate.value) {
-          selectedSum += e.amount;
-          selectedList.appendChild(li.cloneNode(true));
-        }
+        csv += `${e.date},${e.person},${e.amount},"${e.note || ""}"\n`;
       }
 
-      totalEl.innerText = total;
-      todayTotal.innerText = todaySum;
-      monthTotal.innerText = monthSum;
-      selectedTotal.innerText = selectedSum;
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "family_expenses.csv";
+      a.click();
+
+      URL.revokeObjectURL(url);
     });
-  </script>
+  }
+
+  ref.on("value", snap => {
+    const data = snap.val();
+    if (!data) return;
+
+    let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
+    expenseList.innerHTML = "";
+    selectedList.innerHTML = "";
+
+    for (let id in data) {
+      const e = data[id];
+      total += e.amount;
+      if (e.date === today) todaySum += e.amount;
+      if (e.month === today.slice(0,7)) monthSum += e.amount;
+
+      const li = document.createElement("li");
+      li.innerHTML = `<span>${e.person} - ₹${e.amount} (${e.note || "No note"})</span>
+                      <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
+      expenseList.appendChild(li);
+
+      if (e.date === selectedDate.value) {
+        selectedSum += e.amount;
+        selectedList.appendChild(li.cloneNode(true));
+      }
+    }
+
+    totalEl.innerText = total;
+    todayTotal.innerText = todaySum;
+    monthTotal.innerText = monthSum;
+    selectedTotal.innerText = selectedSum;
+  });
+</script>
 
 </body>
 </html>
