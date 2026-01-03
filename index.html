@@ -79,14 +79,13 @@
         return;
       }
 
-      const date = today;
-      const month = date.slice(0, 7);
+      const month = today.slice(0, 7);
 
       expensesRef.push({
         person: person,
         amount: Number(amount),
         note: note,
-        date: date,
+        date: today,
         month: month,
         timestamp: Date.now()
       });
@@ -94,6 +93,13 @@
       document.getElementById("amount").value = "";
       document.getElementById("note").value = "";
       document.getElementById("status").innerText = "Expense added ✅";
+    }
+
+    /* 🗑 DELETE EXPENSE */
+    function deleteExpense(id) {
+      if (confirm("Delete this expense?")) {
+        database.ref("expenses/" + id).remove();
+      }
     }
 
     /* 🔄 REAL-TIME LISTENER */
@@ -122,14 +128,37 @@
         if (exp.date === today) todaySum += exp.amount;
         if (exp.month === thisMonth) monthSum += exp.amount;
 
+        /* ALL EXPENSES LIST */
         const li = document.createElement("li");
-        li.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+
+        const text = document.createElement("span");
+        text.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+
+        const delBtn = document.createElement("button");
+        delBtn.innerText = "❌";
+        delBtn.style.marginLeft = "10px";
+        delBtn.onclick = () => deleteExpense(id);
+
+        li.appendChild(text);
+        li.appendChild(delBtn);
         list.appendChild(li);
 
+        /* SELECTED DATE LIST */
         if (exp.date === selectedDate) {
           selectedSum += exp.amount;
+
           const sLi = document.createElement("li");
-          sLi.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+
+          const sText = document.createElement("span");
+          sText.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+
+          const sDelBtn = document.createElement("button");
+          sDelBtn.innerText = "❌";
+          sDelBtn.style.marginLeft = "10px";
+          sDelBtn.onclick = () => deleteExpense(id);
+
+          sLi.appendChild(sText);
+          sLi.appendChild(sDelBtn);
           selectedList.appendChild(sLi);
         }
       }
@@ -140,7 +169,7 @@
       document.getElementById("selectedTotal").innerText = selectedSum;
     });
 
-    /* 📅 UPDATE WHEN DATE CHANGES */
+    /* 📅 REFRESH WHEN DATE CHANGES */
     document.getElementById("selectedDate").addEventListener("change", () => {
       expensesRef.once("value", () => {});
     });
