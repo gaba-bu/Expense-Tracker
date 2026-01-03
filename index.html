@@ -4,51 +4,165 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Family Expense Tracker</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background: #f4f6f8;
+      color: #333;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .date {
+      text-align: center;
+      color: #555;
+      margin-bottom: 16px;
+    }
+
+    .card {
+      background: #fff;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    select,
+    input,
+    button {
+      padding: 12px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      flex: 1;
+    }
+
+    button {
+      background: #4f46e5;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #4338ca;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 8px;
+      font-weight: bold;
+    }
+
+    .totals h2,
+    .totals h3 {
+      margin: 6px 0;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px;
+      background: #f9fafb;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .delete {
+      background: none;
+      border: none;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .delete:hover {
+      color: red;
+    }
+
+    .section-title {
+      margin-bottom: 8px;
+      font-weight: bold;
+    }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 22px;
+      }
+    }
+  </style>
 </head>
+
 <body>
 
   <h1>Family Expense Tracker</h1>
+  <div class="date">Today: <span id="todayDate"></span></div>
 
-  <p><strong>Today:</strong> <span id="todayDate"></span></p>
+  <!-- ADD EXPENSE -->
+  <div class="card">
+    <div class="row">
+      <select id="person">
+        <option value="">Name</option>
+        <option value="Papa">Papa</option>
+        <option value="Mummy">Mummy</option>
+        <option value="Bunty">Bunty</option>
+      </select>
 
-  <div>
-    <select id="person">
-      <option value="">Select Name</option>
-      <option value="Papa">Papa</option>
-      <option value="Mummy">Mummy</option>
-      <option value="Bunty">Bunty</option>
-    </select>
+      <input type="number" id="amount" placeholder="Amount" />
+    </div>
 
-    <input type="number" id="amount" placeholder="Amount" />
-    <input type="text" id="note" placeholder="Note (optional)" />
+    <div class="row" style="margin-top:8px;">
+      <input type="text" id="note" placeholder="Note (optional)" />
+      <button onclick="addExpense()">Add</button>
+    </div>
 
-    <button onclick="addExpense()">Add Expense</button>
+    <div class="status" id="status">Ready</div>
   </div>
 
-  <h3>Status: <span id="status">Ready</span></h3>
+  <!-- TOTALS -->
+  <div class="card totals">
+    <h2>Total: ₹ <span id="total">0</span></h2>
+    <h3>Today: ₹ <span id="todayTotal">0</span></h3>
+    <h3>This Month: ₹ <span id="monthTotal">0</span></h3>
+  </div>
 
-  <hr />
+  <!-- ALL EXPENSES -->
+  <div class="card">
+    <div class="section-title">All Expenses</div>
+    <ul id="expenseList"></ul>
+  </div>
 
-  <h2>Total: ₹ <span id="total">0</span></h2>
-  <h3>Today: ₹ <span id="todayTotal">0</span></h3>
-  <h3>This Month: ₹ <span id="monthTotal">0</span></h3>
-
-  <h3>All Expenses</h3>
-  <ul id="expenseList"></ul>
-
-  <hr />
-
-  <h3>View expenses by date</h3>
-  <input type="date" id="selectedDate" />
-  <h3>Selected Day Total: ₹ <span id="selectedTotal">0</span></h3>
-  <ul id="selectedList"></ul>
+  <!-- DATE VIEW -->
+  <div class="card">
+    <div class="section-title">View by Date</div>
+    <input type="date" id="selectedDate" />
+    <h3 style="margin-top:8px;">Day Total: ₹ <span id="selectedTotal">0</span></h3>
+    <ul id="selectedList"></ul>
+  </div>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
-    /* 🔥 FIREBASE CONFIG */
     const firebaseConfig = {
       apiKey: "AIzaSyAhHffm0U08iJYDeoBC8ijyueaxR7kPiAM",
       authDomain: "expense-tracker-7b7c2.firebaseapp.com",
@@ -63,30 +177,26 @@
     const database = firebase.database();
     const expensesRef = database.ref("expenses");
 
-    /* 📅 SET TODAY DATE */
     const today = new Date().toISOString().split("T")[0];
     document.getElementById("todayDate").innerText = today;
     document.getElementById("selectedDate").value = today;
 
-    /* ➕ ADD EXPENSE */
     function addExpense() {
       const person = document.getElementById("person").value;
       const amount = document.getElementById("amount").value;
       const note = document.getElementById("note").value;
 
       if (!person || !amount) {
-        alert("Please select name and enter amount");
+        alert("Enter name and amount");
         return;
       }
 
-      const month = today.slice(0, 7);
-
       expensesRef.push({
-        person: person,
+        person,
         amount: Number(amount),
-        note: note,
+        note,
         date: today,
-        month: month,
+        month: today.slice(0, 7),
         timestamp: Date.now()
       });
 
@@ -95,82 +205,48 @@
       document.getElementById("status").innerText = "Expense added ✅";
     }
 
-    /* 🗑 DELETE EXPENSE */
     function deleteExpense(id) {
       if (confirm("Delete this expense?")) {
         database.ref("expenses/" + id).remove();
       }
     }
 
-    /* 🔄 REAL-TIME LISTENER */
     expensesRef.on("value", (snapshot) => {
       const data = snapshot.val();
       if (!data) return;
 
       const selectedDate = document.getElementById("selectedDate").value;
-      const thisMonth = today.slice(0, 7);
+      let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
 
-      let total = 0;
-      let todaySum = 0;
-      let monthSum = 0;
-      let selectedSum = 0;
-
-      const list = document.getElementById("expenseList");
-      const selectedList = document.getElementById("selectedList");
-
-      list.innerHTML = "";
+      expenseList.innerHTML = "";
       selectedList.innerHTML = "";
 
       for (let id in data) {
-        const exp = data[id];
-        total += exp.amount;
+        const e = data[id];
+        total += e.amount;
+        if (e.date === today) todaySum += e.amount;
+        if (e.month === today.slice(0,7)) monthSum += e.amount;
 
-        if (exp.date === today) todaySum += exp.amount;
-        if (exp.month === thisMonth) monthSum += exp.amount;
-
-        /* ALL EXPENSES LIST */
         const li = document.createElement("li");
+        li.innerHTML = `<span>${e.person} - ₹${e.amount} (${e.note || "No note"})</span>
+                        <button class="delete" onclick="deleteExpense('${id}')">❌</button>`;
+        expenseList.appendChild(li);
 
-        const text = document.createElement("span");
-        text.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
-
-        const delBtn = document.createElement("button");
-        delBtn.innerText = "❌";
-        delBtn.style.marginLeft = "10px";
-        delBtn.onclick = () => deleteExpense(id);
-
-        li.appendChild(text);
-        li.appendChild(delBtn);
-        list.appendChild(li);
-
-        /* SELECTED DATE LIST */
-        if (exp.date === selectedDate) {
-          selectedSum += exp.amount;
-
-          const sLi = document.createElement("li");
-
-          const sText = document.createElement("span");
-          sText.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
-
-          const sDelBtn = document.createElement("button");
-          sDelBtn.innerText = "❌";
-          sDelBtn.style.marginLeft = "10px";
-          sDelBtn.onclick = () => deleteExpense(id);
-
-          sLi.appendChild(sText);
-          sLi.appendChild(sDelBtn);
-          selectedList.appendChild(sLi);
+        if (e.date === selectedDate) {
+          selectedSum += e.amount;
+          const sli = li.cloneNode(true);
+          selectedList.appendChild(sli);
         }
       }
 
-      document.getElementById("total").innerText = total;
-      document.getElementById("todayTotal").innerText = todaySum;
-      document.getElementById("monthTotal").innerText = monthSum;
-      document.getElementById("selectedTotal").innerText = selectedSum;
+      totalEl = document.getElementById("total");
+      totalEl.innerText = total;
+      todayTotal.innerText = todaySum;
+      monthTotal.innerText = monthSum;
+      selectedTotal.innerText = selectedSum;
     });
 
-    /* 📅 REFRESH WHEN DATE CHANGES */
-    document.getElementById("selectedDate").addEventListener("change", () => {
+    selectedDate.addEventListener("change", () => {
       expensesRef.once("value", () => {});
     });
   </script>
