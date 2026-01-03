@@ -6,23 +6,89 @@
 <title>Family Expense Tracker</title>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:16px; }
-h1 { text-align:center; }
-.card { background:#fff; padding:16px; border-radius:10px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
-.row { display:flex; gap:8px; flex-wrap:wrap; }
-input, select, button { padding:12px; font-size:16px; border-radius:8px; border:1px solid #ccc; flex:1; }
-button { background:#4f46e5; color:#fff; border:none; }
-button.secondary { background:#374151; }
-ul { list-style:none; padding:0; }
-li { background:#f9fafb; padding:10px; border-radius:6px; margin-bottom:6px; display:flex; justify-content:space-between; }
-.delete { background:none; border:none; font-size:18px; cursor:pointer; }
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6f8;
+  margin: 0;
+  padding: 16px;
+}
+h1 { text-align: center; }
+
+.card {
+  background: #fff;
+  padding: 16px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+label {
+  font-weight: bold;
+  margin-top: 8px;
+  display: block;
+}
+
+input, select, button {
+  padding: 12px;
+  font-size: 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+
+button {
+  background: #4f46e5;
+  color: #fff;
+  border: none;
+  margin-top: 10px;
+}
+
+button.secondary {
+  background: #374151;
+}
+
+ul { list-style: none; padding: 0; }
+
+li {
+  background: #f9fafb;
+  padding: 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.delete {
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+}
 
 /* LOGIN */
 #loginOverlay {
-  position:fixed; inset:0; background:rgba(0,0,0,.6);
-  display:flex; align-items:center; justify-content:center; z-index:999;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
 }
-#loginBox { background:#fff; padding:20px; border-radius:10px; max-width:300px; width:100%; }
+
+#loginBox {
+  background: #fff;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 300px;
+  width: 100%;
+}
 </style>
 </head>
 
@@ -45,19 +111,37 @@ li { background:#f9fafb; padding:10px; border-radius:6px; margin-bottom:6px; dis
 <h1>Family Expense Tracker</h1>
 <p><b>Today:</b> <span id="todayDate"></span></p>
 
-<!-- ADD -->
+<!-- ADD EXPENSE -->
 <div class="card">
   <div class="row">
     <div><b>Logged in as:</b> <span id="currentUser"></span></div>
     <button class="secondary" onclick="switchUser()">Switch User</button>
   </div>
 
-  <div class="row" style="margin-top:10px">
-    <input id="amount" type="number" placeholder="Amount">
-    <input id="note" placeholder="Note">
-  </div>
+  <label>Expense Date</label>
+  <input type="date" id="expenseDate">
 
-  <button style="margin-top:10px" onclick="addExpense()">Add Expense</button>
+  <label>Amount</label>
+  <input type="number" id="amount" placeholder="Enter amount">
+
+  <label>Purpose</label>
+  <input type="text" id="purpose" placeholder="Purpose of expense">
+
+  <label>Mode of Payment</label>
+  <select id="paymentMode">
+    <option value="">Select mode</option>
+    <option>Cash</option>
+    <option>HDFC Bank</option>
+    <option>UNION Bank</option>
+    <option>HDFC Credit Card</option>
+    <option>AXIS Bank Credit Card</option>
+    <option>Standard Chartered Credit Card</option>
+    <option>Bunty HDFC UPI</option>
+    <option>GPay SBI</option>
+    <option>PhonePe BOI</option>
+  </select>
+
+  <button onclick="addExpense()">Add Expense</button>
 </div>
 
 <!-- TOTALS -->
@@ -65,14 +149,6 @@ li { background:#f9fafb; padding:10px; border-radius:6px; margin-bottom:6px; dis
   <h3>Total ₹ <span id="total">0</span></h3>
   <p>Today ₹ <span id="todayTotal">0</span></p>
   <p>This Month ₹ <span id="monthTotal">0</span></p>
-</div>
-
-<!-- DATE VIEW -->
-<div class="card">
-  <h3>View by Date</h3>
-  <input type="date" id="selectedDate">
-  <p>Day Total ₹ <span id="selectedTotal">0</span></p>
-  <ul id="selectedList"></ul>
 </div>
 
 <!-- LIST -->
@@ -99,53 +175,63 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("expenses");
 
-/* DATE */
 function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
+
 document.getElementById("todayDate").innerText = todayStr();
-document.getElementById("selectedDate").value = todayStr();
+document.getElementById("expenseDate").value = todayStr();
 
 /* LOGIN */
 let currentUser = localStorage.getItem("user");
 if (currentUser) {
-  document.getElementById("loginOverlay").style.display = "none";
-  document.getElementById("currentUser").innerText = currentUser;
+  loginOverlay.style.display = "none";
+  currentUserSpan();
 }
 
 function login() {
-  const name = document.getElementById("loginName").value;
+  const name = loginName.value;
   if (!name) return alert("Select your name");
   localStorage.setItem("user", name);
   currentUser = name;
-  document.getElementById("currentUser").innerText = name;
-  document.getElementById("loginOverlay").style.display = "none";
+  loginOverlay.style.display = "none";
+  currentUserSpan();
 }
 
 function switchUser() {
   localStorage.removeItem("user");
-  document.getElementById("loginOverlay").style.display = "flex";
+  loginOverlay.style.display = "flex";
 }
 
-/* ADD */
-function addExpense() {
-  const amt = document.getElementById("amount").value;
-  const note = document.getElementById("note").value;
-  if (!amt) return alert("Enter amount");
+function currentUserSpan() {
+  document.getElementById("currentUser").innerText = currentUser;
+}
 
-  const d = todayStr();
+/* ADD EXPENSE */
+function addExpense() {
+  const amt = amount.value;
+  const date = expenseDate.value;
+  const purpose = document.getElementById("purpose").value;
+  const mode = document.getElementById("paymentMode").value;
+
+  if (!amt || !date || !mode) {
+    alert("Please fill amount, date and payment mode");
+    return;
+  }
 
   ref.push({
     person: currentUser,
     amount: Number(amt),
-    note: note,
-    date: d,
-    month: d.slice(0,7),
+    purpose: purpose,
+    paymentMode: mode,
+    date: date,
+    month: date.slice(0,7),
     timestamp: Date.now()
   });
 
-  document.getElementById("amount").value = "";
-  document.getElementById("note").value = "";
+  amount.value = "";
+  purpose.value = "";
+  paymentMode.value = "";
 }
 
 /* LISTENER */
@@ -155,11 +241,9 @@ ref.on("value", snap => {
 
   const today = todayStr();
   const thisMonth = today.slice(0,7);
-  const selected = document.getElementById("selectedDate").value;
 
-  let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
-  document.getElementById("expenseList").innerHTML = "";
-  document.getElementById("selectedList").innerHTML = "";
+  let total = 0, todaySum = 0, monthSum = 0;
+  expenseList.innerHTML = "";
 
   Object.entries(data).forEach(([id,e]) => {
     total += e.amount;
@@ -167,24 +251,17 @@ ref.on("value", snap => {
     if (e.month === thisMonth) monthSum += e.amount;
 
     const li = document.createElement("li");
-    li.innerHTML = `${e.person} ₹${e.amount} (${e.note||""})
-      <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
-    document.getElementById("expenseList").appendChild(li);
-
-    if (e.date === selected) {
-      selectedSum += e.amount;
-      document.getElementById("selectedList").appendChild(li.cloneNode(true));
-    }
+    li.innerHTML = `
+      ${e.date} | ${e.person} | ₹${e.amount}<br>
+      ${e.purpose || "No purpose"} | ${e.paymentMode}
+      <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>
+    `;
+    expenseList.appendChild(li);
   });
 
   document.getElementById("total").innerText = total;
   document.getElementById("todayTotal").innerText = todaySum;
   document.getElementById("monthTotal").innerText = monthSum;
-  document.getElementById("selectedTotal").innerText = selectedSum;
-});
-
-document.getElementById("selectedDate").addEventListener("change", () => {
-  ref.once("value",()=>{});
 });
 </script>
 
