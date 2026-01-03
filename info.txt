@@ -1,0 +1,18 @@
+----------Family Expence Tracker----------
+
+*built the base structure using html and javascript.
+*Basic expence tracker with shared user functionality and shared visibility.
+*Used Google's Firebase Database System for a real-time database which works very fast.
+*Connected the database to my personal GitHub's Repository and used 'pages' to host the website.
+*Added features: 
+1. individual person login
+2. Expense Delete option incase of a wrong entry
+3. Daily and Monthly Total Expense 
+4. Different Export options of the expense report
+
+
+
+-----Future Improvement Ideas-----
+
+*Integrate AI to suggest cost cuts for better savings
+*Enter a specific target spending amount for the month and ask AI to help give a spending plan based on the user's past spending behaviour.
