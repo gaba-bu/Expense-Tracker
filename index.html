@@ -28,28 +28,20 @@ input, select, button {
   border: 1px solid #ccc;
   flex: 1;
 }
-button {
-  background: #4f46e5;
-  color: #fff;
-  border: none;
-}
-button.secondary { background: #374151; }
-button.green { background: #059669; }
-button.orange { background: #d97706; }
-button.gray { background: #374151; }
-
-ul { list-style: none; padding: 0; }
+button { background: #4f46e5; color:#fff; border:none; }
+button.secondary { background:#374151; }
+ul { list-style:none; padding:0; }
 li {
-  background: #f9fafb;
-  padding: 10px;
-  border-radius: 6px;
-  margin-bottom: 6px;
-  display: flex;
-  justify-content: space-between;
+  background:#f9fafb;
+  padding:10px;
+  border-radius:6px;
+  margin-bottom:6px;
+  display:flex;
+  justify-content:space-between;
 }
 .delete { background:none;border:none;font-size:18px;cursor:pointer; }
 
-/* LOGIN OVERLAY */
+/* LOGIN */
 #loginOverlay {
   position: fixed;
   inset: 0;
@@ -81,14 +73,14 @@ li {
       <option>Mummy</option>
       <option>Bunty</option>
     </select>
-    <button style="margin-top:12px" onclick="login()">Continue</button>
+    <button onclick="login()">Continue</button>
   </div>
 </div>
 
 <h1>Family Expense Tracker</h1>
 <p><b>Today:</b> <span id="todayDate"></span></p>
 
-<!-- ADD EXPENSE -->
+<!-- ADD -->
 <div class="card">
   <div class="row">
     <div><b>Logged in as:</b> <span id="currentUser"></span></div>
@@ -110,27 +102,7 @@ li {
   <p>This Month ₹ <span id="monthTotal">0</span></p>
 </div>
 
-<!-- EXPORT -->
-<div class="card">
-  <h3>Export</h3>
-  <input type="date" id="exportDate">
-  <div class="row" style="margin-top:8px">
-    <button class="green" onclick="exportSelectedDate()">Selected Day</button>
-    <button class="orange" onclick="exportThisMonth()">This Month</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <select id="exportPerson">
-      <option value="">Select Person</option>
-      <option>Papa</option>
-      <option>Mummy</option>
-      <option>Bunty</option>
-    </select>
-    <button class="gray" onclick="exportByPerson()">By Person</button>
-  </div>
-  <button style="margin-top:8px" onclick="exportAll()">Export All</button>
-</div>
-
-<!-- DATE VIEW -->
+<!-- VIEW BY DATE -->
 <div class="card">
   <h3>View by Date</h3>
   <input type="date" id="selectedDate">
@@ -162,15 +134,18 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("expenses");
 
-const today = new Date().toISOString().split("T")[0];
-todayDate.innerText = today;
-exportDate.value = today;
-selectedDate.value = today;
+/* DATE SETUP */
+function getToday() {
+  return new Date().toISOString().split("T")[0];
+}
+todayDate.innerText = getToday();
+selectedDate.value = getToday();
 
+/* LOGIN */
 let currentUser = localStorage.getItem("user");
 if (currentUser) {
   loginOverlay.style.display = "none";
-  currentUserSpan();
+  document.getElementById("currentUser").innerText = currentUser;
 }
 
 function login() {
@@ -179,21 +154,20 @@ function login() {
   localStorage.setItem("user", name);
   currentUser = name;
   loginOverlay.style.display = "none";
-  currentUserSpan();
+  document.getElementById("currentUser").innerText = name;
 }
 
 function switchUser() {
   localStorage.removeItem("user");
-  loginName.value = "";
   loginOverlay.style.display = "flex";
 }
 
-function currentUserSpan() {
-  document.getElementById("currentUser").innerText = currentUser;
-}
-
+/* ADD EXPENSE */
 function addExpense() {
   if (!amount.value) return alert("Enter amount");
+
+  const today = getToday();
+
   ref.push({
     person: currentUser,
     amount: Number(amount.value),
@@ -202,71 +176,49 @@ function addExpense() {
     month: today.slice(0,7),
     timestamp: Date.now()
   });
+
   amount.value = "";
   note.value = "";
 }
 
-function makeCSV(rows, filename) {
-  let csv = "Date,Name,Amount,Note\n";
-  rows.forEach(e => {
-    csv += `${e.date},${e.person},${e.amount},"${e.note || ""}"\n`;
-  });
-  const blob = new Blob([csv], { type: "text/csv" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  a.click();
-}
+/* REAL-TIME LISTENER */
+ref.on("value", snapshot => {
+  const data = snapshot.val();
+  if (!data) return;
 
-function exportAll() {
-  ref.once("value", s => makeCSV(Object.values(s.val()||{}), "All_Expenses.csv"));
-}
-function exportSelectedDate() {
-  const d = exportDate.value;
-  ref.once("value", s =>
-    makeCSV(Object.values(s.val()||{}).filter(e=>e.date===d), `Expenses_${d}.csv`)
-  );
-}
-function exportThisMonth() {
-  const m = today.slice(0,7);
-  ref.once("value", s =>
-    makeCSV(Object.values(s.val()||{}).filter(e=>e.month===m), `Expenses_${m}.csv`)
-  );
-}
-function exportByPerson() {
-  const p = exportPerson.value;
-  if (!p) return alert("Select person");
-  ref.once("value", s =>
-    makeCSV(Object.values(s.val()||{}).filter(e=>e.person===p), `${p}_Expenses.csv`)
-  );
-}
+  const today = getToday();
+  const thisMonth = today.slice(0,7);
+  const selected = selectedDate.value;
 
-ref.on("value", s => {
-  const d = s.val(); if (!d) return;
-  let total=0, todaySum=0, monthSum=0, selectedSum=0;
-  expenseList.innerHTML="";
-  selectedList.innerHTML="";
+  let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
+  expenseList.innerHTML = "";
+  selectedList.innerHTML = "";
 
-  Object.entries(d).forEach(([id,e])=>{
-    total+=e.amount;
-    if(e.date===today) todaySum+=e.amount;
-    if(e.month===today.slice(0,7)) monthSum+=e.amount;
+  Object.entries(data).forEach(([id,e]) => {
+    total += e.amount;
 
-    const li=document.createElement("li");
-    li.innerHTML=`${e.person} ₹${e.amount} (${e.note||""})
-    <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
-    expenseList.appendChild(li);
-
-    if(e.date===selectedDate.value){
-      selectedSum+=e.amount;
-      selectedList.appendChild(li.cloneNode(true));
+    if (e.date === today) todaySum += e.amount;
+    if (e.month === thisMonth) monthSum += e.amount;
+    if (e.date === selected) {
+      selectedSum += e.amount;
+      selectedList.innerHTML += `<li>${e.person} ₹${e.amount}</li>`;
     }
+
+    expenseList.innerHTML += `
+      <li>${e.person} ₹${e.amount} (${e.note||""})
+        <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>
+      </li>`;
   });
 
-  totalEl.innerText=total;
-  todayTotal.innerText=todaySum;
-  monthTotal.innerText=monthSum;
-  selectedTotal.innerText=selectedSum;
+  totalEl.innerText = total;
+  todayTotal.innerText = todaySum;
+  monthTotal.innerText = monthSum;
+  selectedTotal.innerText = selectedSum;
+});
+
+/* UPDATE WHEN DATE CHANGES */
+selectedDate.addEventListener("change", () => {
+  ref.once("value",()=>{});
 });
 </script>
 
