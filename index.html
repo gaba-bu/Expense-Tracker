@@ -24,6 +24,10 @@
   </div>
 
   <h3>Status: <span id="status">Ready</span></h3>
+  <h2>Total: ₹ <span id="total">0</span></h2>
+
+<ul id="expenseList"></ul>
+
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -64,6 +68,27 @@
       document.getElementById("note").value = "";
       document.getElementById("status").innerText = "Expense added ✅";
     }
+    const expensesRef = database.ref("expenses");
+
+expensesRef.on("value", (snapshot) => {
+  const data = snapshot.val();
+
+  let total = 0;
+  const list = document.getElementById("expenseList");
+  list.innerHTML = "";
+
+  for (let id in data) {
+    const exp = data[id];
+    total += exp.amount;
+
+    const li = document.createElement("li");
+    li.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+    list.appendChild(li);
+  }
+
+  document.getElementById("total").innerText = total;
+});
+
   </script>
 
 </body>
