@@ -13,6 +13,7 @@ body {
   padding: 16px;
 }
 h1 { text-align: center; }
+
 .card {
   background: #fff;
   padding: 16px;
@@ -20,7 +21,9 @@ h1 { text-align: center; }
   margin-bottom: 16px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.08);
 }
+
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
+
 input, select, button {
   padding: 12px;
   font-size: 16px;
@@ -28,15 +31,19 @@ input, select, button {
   border: 1px solid #ccc;
   flex: 1;
 }
+
 button {
   background: #4f46e5;
   color: #fff;
   border: none;
 }
-button.green { background: #059669; }
-button.orange { background: #d97706; }
-button.gray { background: #374151; }
+
+button.secondary {
+  background: #374151;
+}
+
 ul { list-style: none; padding: 0; }
+
 li {
   background: #f9fafb;
   padding: 10px;
@@ -45,7 +52,15 @@ li {
   display: flex;
   justify-content: space-between;
 }
-.delete { background:none;border:none;font-size:18px; }
+
+.delete {
+  background:none;
+  border:none;
+  font-size:18px;
+  cursor:pointer;
+}
+
+/* LOGIN OVERLAY */
 #loginOverlay {
   position: fixed;
   inset: 0;
@@ -53,7 +68,9 @@ li {
   display: flex;
   align-items: center;
   justify-content: center;
+  z-index: 999;
 }
+
 #loginBox {
   background:#fff;
   padding:20px;
@@ -83,41 +100,24 @@ li {
 <h1>Family Expense Tracker</h1>
 <p><b>Today:</b> <span id="todayDate"></span></p>
 
-<!-- ADD -->
+<!-- ADD EXPENSE -->
 <div class="card">
-  <b>Logged in as:</b> <span id="currentUser"></span>
+  <div class="row">
+    <div><b>Logged in as:</b> <span id="currentUser"></span></div>
+    <button class="secondary" onclick="switchUser()">Switch User</button>
+  </div>
+
   <div class="row" style="margin-top:10px">
     <input id="amount" type="number" placeholder="Amount">
     <input id="note" placeholder="Note">
   </div>
+
   <button style="margin-top:10px" onclick="addExpense()">Add Expense</button>
 </div>
 
-<!-- TOTALS -->
+<!-- TOTAL -->
 <div class="card">
   <h3>Total ₹ <span id="total">0</span></h3>
-  <p>Today ₹ <span id="todayTotal">0</span></p>
-  <p>This Month ₹ <span id="monthTotal">0</span></p>
-</div>
-
-<!-- EXPORT -->
-<div class="card">
-  <h3>Export Options</h3>
-  <input type="date" id="exportDate">
-  <div class="row" style="margin-top:8px">
-    <button class="green" onclick="exportSelectedDate()">Export Selected Day</button>
-    <button class="orange" onclick="exportThisMonth()">Export This Month</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <select id="exportPerson">
-      <option value="">Select Person</option>
-      <option>Papa</option>
-      <option>Mummy</option>
-      <option>Bunty</option>
-    </select>
-    <button class="gray" onclick="exportByPerson()">Export Person</button>
-  </div>
-  <button style="margin-top:8px" onclick="exportAll()">Export All</button>
 </div>
 
 <!-- LIST -->
@@ -146,22 +146,34 @@ const ref = db.ref("expenses");
 
 const today = new Date().toISOString().split("T")[0];
 todayDate.innerText = today;
-exportDate.value = today;
 
 let currentUser = localStorage.getItem("user");
-if(currentUser){loginOverlay.style.display="none";currentUserEl()}
 
-function login(){
-  currentUser = loginName.value;
-  if(!currentUser) return alert("Select name");
-  localStorage.setItem("user",currentUser);
-  loginOverlay.style.display="none";
-  currentUserEl();
+if (currentUser) {
+  loginOverlay.style.display = "none";
+  document.getElementById("currentUser").innerText = currentUser;
 }
-function currentUserEl(){ currentUser.innerText=currentUser }
 
-function addExpense(){
-  if(!amount.value) return alert("Enter amount");
+function login() {
+  const name = loginName.value;
+  if (!name) return alert("Select your name");
+  localStorage.setItem("user", name);
+  currentUser = name;
+  document.getElementById("currentUser").innerText = name;
+  loginOverlay.style.display = "none";
+}
+
+function switchUser() {
+  if (confirm("Switch user?")) {
+    localStorage.removeItem("user");
+    loginName.value = "";
+    loginOverlay.style.display = "flex";
+  }
+}
+
+function addExpense() {
+  if (!amount.value) return alert("Enter amount");
+
   ref.push({
     person: currentUser,
     amount: Number(amount.value),
@@ -170,65 +182,27 @@ function addExpense(){
     month: today.slice(0,7),
     timestamp: Date.now()
   });
-  amount.value="";note.value="";
+
+  amount.value = "";
+  note.value = "";
 }
 
-function makeCSV(rows, filename){
-  let csv="Date,Name,Amount,Note\n";
-  rows.forEach(e=>{
-    csv+=`${e.date},${e.person},${e.amount},"${e.note||""}"\n`;
-  });
-  const blob=new Blob([csv],{type:"text/csv"});
-  const a=document.createElement("a");
-  a.href=URL.createObjectURL(blob);
-  a.download=filename;
-  a.click();
-}
+ref.on("value", snap => {
+  const data = snap.val();
+  if (!data) return;
 
-function exportAll(){
-  ref.once("value",s=>{
-    makeCSV(Object.values(s.val()),"All_Expenses.csv");
-  });
-}
+  let total = 0;
+  expenseList.innerHTML = "";
 
-function exportSelectedDate(){
-  ref.once("value",s=>{
-    const d=exportDate.value;
-    makeCSV(Object.values(s.val()).filter(e=>e.date===d),`Expenses_${d}.csv`);
-  });
-}
-
-function exportThisMonth(){
-  const m=today.slice(0,7);
-  ref.once("value",s=>{
-    makeCSV(Object.values(s.val()).filter(e=>e.month===m),`Expenses_${m}.csv`);
-  });
-}
-
-function exportByPerson(){
-  const p=exportPerson.value;
-  if(!p) return alert("Select person");
-  ref.once("value",s=>{
-    makeCSV(Object.values(s.val()).filter(e=>e.person===p),`${p}_Expenses.csv`);
-  });
-}
-
-ref.on("value",s=>{
-  const d=s.val(); if(!d) return;
-  let total=0,todaySum=0,monthSum=0;
-  expenseList.innerHTML="";
-  Object.entries(d).forEach(([id,e])=>{
-    total+=e.amount;
-    if(e.date===today) todaySum+=e.amount;
-    if(e.month===today.slice(0,7)) monthSum+=e.amount;
-    const li=document.createElement("li");
-    li.innerHTML=`${e.person} ₹${e.amount} (${e.note||""})
-    <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
+  Object.entries(data).forEach(([id,e]) => {
+    total += e.amount;
+    const li = document.createElement("li");
+    li.innerHTML = `${e.person} ₹${e.amount} (${e.note || ""})
+      <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
     expenseList.appendChild(li);
   });
-  totalEl.innerText=total;
-  todayTotal.innerText=todaySum;
-  monthTotal.innerText=monthSum;
+
+  totalEl.innerText = total;
 });
 </script>
 
