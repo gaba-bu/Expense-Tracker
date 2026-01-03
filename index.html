@@ -6,58 +6,23 @@
 <title>Family Expense Tracker</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f4f6f8;
-  margin: 0;
-  padding: 16px;
-}
-h1 { text-align: center; }
-.card {
-  background: #fff;
-  padding: 16px;
-  border-radius: 10px;
-  margin-bottom: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-}
-.row { display: flex; gap: 8px; flex-wrap: wrap; }
-input, select, button {
-  padding: 12px;
-  font-size: 16px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  flex: 1;
-}
-button { background: #4f46e5; color:#fff; border:none; }
+body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:16px; }
+h1 { text-align:center; }
+.card { background:#fff; padding:16px; border-radius:10px; margin-bottom:16px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+.row { display:flex; gap:8px; flex-wrap:wrap; }
+input, select, button { padding:12px; font-size:16px; border-radius:8px; border:1px solid #ccc; flex:1; }
+button { background:#4f46e5; color:#fff; border:none; }
 button.secondary { background:#374151; }
 ul { list-style:none; padding:0; }
-li {
-  background:#f9fafb;
-  padding:10px;
-  border-radius:6px;
-  margin-bottom:6px;
-  display:flex;
-  justify-content:space-between;
-}
-.delete { background:none;border:none;font-size:18px;cursor:pointer; }
+li { background:#f9fafb; padding:10px; border-radius:6px; margin-bottom:6px; display:flex; justify-content:space-between; }
+.delete { background:none; border:none; font-size:18px; cursor:pointer; }
 
 /* LOGIN */
 #loginOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 999;
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center; z-index:999;
 }
-#loginBox {
-  background:#fff;
-  padding:20px;
-  border-radius:10px;
-  width:100%;
-  max-width:300px;
-}
+#loginBox { background:#fff; padding:20px; border-radius:10px; max-width:300px; width:100%; }
 </style>
 </head>
 
@@ -102,7 +67,7 @@ li {
   <p>This Month ₹ <span id="monthTotal">0</span></p>
 </div>
 
-<!-- VIEW BY DATE -->
+<!-- DATE VIEW -->
 <div class="card">
   <h3>View by Date</h3>
   <input type="date" id="selectedDate">
@@ -134,90 +99,91 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("expenses");
 
-/* DATE SETUP */
-function getToday() {
+/* DATE */
+function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
-todayDate.innerText = getToday();
-selectedDate.value = getToday();
+document.getElementById("todayDate").innerText = todayStr();
+document.getElementById("selectedDate").value = todayStr();
 
 /* LOGIN */
 let currentUser = localStorage.getItem("user");
 if (currentUser) {
-  loginOverlay.style.display = "none";
+  document.getElementById("loginOverlay").style.display = "none";
   document.getElementById("currentUser").innerText = currentUser;
 }
 
 function login() {
-  const name = loginName.value;
+  const name = document.getElementById("loginName").value;
   if (!name) return alert("Select your name");
   localStorage.setItem("user", name);
   currentUser = name;
-  loginOverlay.style.display = "none";
   document.getElementById("currentUser").innerText = name;
+  document.getElementById("loginOverlay").style.display = "none";
 }
 
 function switchUser() {
   localStorage.removeItem("user");
-  loginOverlay.style.display = "flex";
+  document.getElementById("loginOverlay").style.display = "flex";
 }
 
-/* ADD EXPENSE */
+/* ADD */
 function addExpense() {
-  if (!amount.value) return alert("Enter amount");
+  const amt = document.getElementById("amount").value;
+  const note = document.getElementById("note").value;
+  if (!amt) return alert("Enter amount");
 
-  const today = getToday();
+  const d = todayStr();
 
   ref.push({
     person: currentUser,
-    amount: Number(amount.value),
-    note: note.value,
-    date: today,
-    month: today.slice(0,7),
+    amount: Number(amt),
+    note: note,
+    date: d,
+    month: d.slice(0,7),
     timestamp: Date.now()
   });
 
-  amount.value = "";
-  note.value = "";
+  document.getElementById("amount").value = "";
+  document.getElementById("note").value = "";
 }
 
-/* REAL-TIME LISTENER */
-ref.on("value", snapshot => {
-  const data = snapshot.val();
+/* LISTENER */
+ref.on("value", snap => {
+  const data = snap.val();
   if (!data) return;
 
-  const today = getToday();
+  const today = todayStr();
   const thisMonth = today.slice(0,7);
-  const selected = selectedDate.value;
+  const selected = document.getElementById("selectedDate").value;
 
   let total = 0, todaySum = 0, monthSum = 0, selectedSum = 0;
-  expenseList.innerHTML = "";
-  selectedList.innerHTML = "";
+  document.getElementById("expenseList").innerHTML = "";
+  document.getElementById("selectedList").innerHTML = "";
 
   Object.entries(data).forEach(([id,e]) => {
     total += e.amount;
-
     if (e.date === today) todaySum += e.amount;
     if (e.month === thisMonth) monthSum += e.amount;
+
+    const li = document.createElement("li");
+    li.innerHTML = `${e.person} ₹${e.amount} (${e.note||""})
+      <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>`;
+    document.getElementById("expenseList").appendChild(li);
+
     if (e.date === selected) {
       selectedSum += e.amount;
-      selectedList.innerHTML += `<li>${e.person} ₹${e.amount}</li>`;
+      document.getElementById("selectedList").appendChild(li.cloneNode(true));
     }
-
-    expenseList.innerHTML += `
-      <li>${e.person} ₹${e.amount} (${e.note||""})
-        <button class="delete" onclick="db.ref('expenses/${id}').remove()">❌</button>
-      </li>`;
   });
 
-  totalEl.innerText = total;
-  todayTotal.innerText = todaySum;
-  monthTotal.innerText = monthSum;
-  selectedTotal.innerText = selectedSum;
+  document.getElementById("total").innerText = total;
+  document.getElementById("todayTotal").innerText = todaySum;
+  document.getElementById("monthTotal").innerText = monthSum;
+  document.getElementById("selectedTotal").innerText = selectedSum;
 });
 
-/* UPDATE WHEN DATE CHANGES */
-selectedDate.addEventListener("change", () => {
+document.getElementById("selectedDate").addEventListener("change", () => {
   ref.once("value",()=>{});
 });
 </script>
