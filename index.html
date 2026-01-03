@@ -9,6 +9,8 @@
 
   <h1>Family Expense Tracker</h1>
 
+  <p><strong>Today:</strong> <span id="todayDate"></span></p>
+
   <div>
     <select id="person">
       <option value="">Select Name</option>
@@ -25,20 +27,28 @@
 
   <h3>Status: <span id="status">Ready</span></h3>
 
- <h2>Total: ₹ <span id="total">0</span></h2>
+  <hr />
 
-<h3>Today: ₹ <span id="todayTotal">0</span></h3>
-<h3>This Month: ₹ <span id="monthTotal">0</span></h3>
+  <h2>Total: ₹ <span id="total">0</span></h2>
+  <h3>Today: ₹ <span id="todayTotal">0</span></h3>
+  <h3>This Month: ₹ <span id="monthTotal">0</span></h3>
 
-<ul id="expenseList"></ul>
+  <h3>All Expenses</h3>
+  <ul id="expenseList"></ul>
 
-  
+  <hr />
+
+  <h3>View expenses by date</h3>
+  <input type="date" id="selectedDate" />
+  <h3>Selected Day Total: ₹ <span id="selectedTotal">0</span></h3>
+  <ul id="selectedList"></ul>
 
   <!-- Firebase SDKs -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
   <script>
+    /* 🔥 FIREBASE CONFIG */
     const firebaseConfig = {
       apiKey: "AIzaSyAhHffm0U08iJYDeoBC8ijyueaxR7kPiAM",
       authDomain: "expense-tracker-7b7c2.firebaseapp.com",
@@ -51,7 +61,14 @@
 
     firebase.initializeApp(firebaseConfig);
     const database = firebase.database();
+    const expensesRef = database.ref("expenses");
 
+    /* 📅 SET TODAY DATE */
+    const today = new Date().toISOString().split("T")[0];
+    document.getElementById("todayDate").innerText = today;
+    document.getElementById("selectedDate").value = today;
+
+    /* ➕ ADD EXPENSE */
     function addExpense() {
       const person = document.getElementById("person").value;
       const amount = document.getElementById("amount").value;
@@ -62,57 +79,71 @@
         return;
       }
 
-      const now = new Date();
-const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
-const month = date.slice(0, 7); // YYYY-MM
+      const date = today;
+      const month = date.slice(0, 7);
 
-database.ref("expenses").push({
-  person: person,
-  amount: Number(amount),
-  note: note,
-  date: date,
-  month: month,
-  timestamp: Date.now()
-});
-
+      expensesRef.push({
+        person: person,
+        amount: Number(amount),
+        note: note,
+        date: date,
+        month: month,
+        timestamp: Date.now()
+      });
 
       document.getElementById("amount").value = "";
       document.getElementById("note").value = "";
       document.getElementById("status").innerText = "Expense added ✅";
     }
-    const expensesRef = database.ref("expenses");
 
-expensesRef.on("value", (snapshot) => {
-  const data = snapshot.val();
-  if (!data) return;
+    /* 🔄 REAL-TIME LISTENER */
+    expensesRef.on("value", (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
 
-  const today = new Date().toISOString().split("T")[0];
-  const thisMonth = today.slice(0, 7);
+      const selectedDate = document.getElementById("selectedDate").value;
+      const thisMonth = today.slice(0, 7);
 
-  let total = 0;
-  let todaySum = 0;
-  let monthSum = 0;
+      let total = 0;
+      let todaySum = 0;
+      let monthSum = 0;
+      let selectedSum = 0;
 
-  const list = document.getElementById("expenseList");
-  list.innerHTML = "";
+      const list = document.getElementById("expenseList");
+      const selectedList = document.getElementById("selectedList");
 
-  for (let id in data) {
-    const exp = data[id];
-    total += exp.amount;
+      list.innerHTML = "";
+      selectedList.innerHTML = "";
 
-    if (exp.date === today) todaySum += exp.amount;
-    if (exp.month === thisMonth) monthSum += exp.amount;
+      for (let id in data) {
+        const exp = data[id];
+        total += exp.amount;
 
-    const li = document.createElement("li");
-    li.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
-    list.appendChild(li);
-  }
+        if (exp.date === today) todaySum += exp.amount;
+        if (exp.month === thisMonth) monthSum += exp.amount;
 
-  document.getElementById("total").innerText = total;
-  document.getElementById("todayTotal").innerText = todaySum;
-  document.getElementById("monthTotal").innerText = monthSum;
-});
+        const li = document.createElement("li");
+        li.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+        list.appendChild(li);
 
+        if (exp.date === selectedDate) {
+          selectedSum += exp.amount;
+          const sLi = document.createElement("li");
+          sLi.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
+          selectedList.appendChild(sLi);
+        }
+      }
+
+      document.getElementById("total").innerText = total;
+      document.getElementById("todayTotal").innerText = todaySum;
+      document.getElementById("monthTotal").innerText = monthSum;
+      document.getElementById("selectedTotal").innerText = selectedSum;
+    });
+
+    /* 📅 UPDATE WHEN DATE CHANGES */
+    document.getElementById("selectedDate").addEventListener("change", () => {
+      expensesRef.once("value", () => {});
+    });
   </script>
 
 </body>
