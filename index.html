@@ -27,6 +27,10 @@
 
   <h2>Total: ₹ <span id="total">0</span></h2>
 <ul id="expenseList"></ul>
+
+  <h3>Today: ₹ <span id="todayTotal">0</span></h3>
+<h3>This Month: ₹ <span id="monthTotal">0</span></h3>
+
   
 
   <!-- Firebase SDKs -->
@@ -57,12 +61,19 @@
         return;
       }
 
-      database.ref("expenses").push({
-        person: person,
-        amount: Number(amount),
-        note: note,
-        timestamp: Date.now()
-      });
+      const now = new Date();
+const date = now.toISOString().split("T")[0]; // YYYY-MM-DD
+const month = date.slice(0, 7); // YYYY-MM
+
+database.ref("expenses").push({
+  person: person,
+  amount: Number(amount),
+  note: note,
+  date: date,
+  month: month,
+  timestamp: Date.now()
+});
+
 
       document.getElementById("amount").value = "";
       document.getElementById("note").value = "";
@@ -72,8 +83,15 @@
 
 expensesRef.on("value", (snapshot) => {
   const data = snapshot.val();
+  if (!data) return;
+
+  const today = new Date().toISOString().split("T")[0];
+  const thisMonth = today.slice(0, 7);
 
   let total = 0;
+  let todaySum = 0;
+  let monthSum = 0;
+
   const list = document.getElementById("expenseList");
   list.innerHTML = "";
 
@@ -81,12 +99,17 @@ expensesRef.on("value", (snapshot) => {
     const exp = data[id];
     total += exp.amount;
 
+    if (exp.date === today) todaySum += exp.amount;
+    if (exp.month === thisMonth) monthSum += exp.amount;
+
     const li = document.createElement("li");
     li.innerText = `${exp.person} - ₹${exp.amount} (${exp.note || "No note"})`;
     list.appendChild(li);
   }
 
   document.getElementById("total").innerText = total;
+  document.getElementById("todayTotal").innerText = todaySum;
+  document.getElementById("monthTotal").innerText = monthSum;
 });
 
   </script>
