@@ -12,7 +12,6 @@ body {
   margin:0;
   padding:16px;
 }
-
 h1 { text-align:center; margin-bottom:8px; }
 
 .card {
@@ -54,6 +53,7 @@ button.success { background:#059669; }
   display:flex;
   gap:8px;
   flex-wrap:wrap;
+  align-items:center;
 }
 
 .small-btn {
@@ -168,13 +168,13 @@ li {
     <option>PhonePe BOI</option>
   </select>
 
-  <button id="saveBtn" onclick="addExpense()">Add Expense</button>
+  <button id="saveBtn" onclick="saveExpense()">Add Expense</button>
   <button id="cancelEditBtn" class="warning" style="display:none" onclick="cancelEdit()">Cancel Edit</button>
 </div>
 
 <!-- ALL EXPENSES -->
 <div class="card">
-  <h3>All Expenses (Last 30 Days)</h3>
+  <h3>All Expenses (Last 7 Days)</h3>
   <ul id="expenseList"></ul>
 </div>
 
@@ -200,23 +200,24 @@ function todayStr() {
   return new Date().toISOString().split("T")[0];
 }
 
-todayDate.innerText = todayStr();
-expenseDate.value = todayStr();
+document.getElementById("todayDate").innerText = todayStr();
+document.getElementById("expenseDate").value = todayStr();
 
 let currentUser = localStorage.getItem("user");
 let editId = null;
 
 if (currentUser) {
-  loginOverlay.style.display = "none";
-  currentUserSpan();
+  document.getElementById("loginOverlay").style.display = "none";
+  document.getElementById("currentUser").innerText = currentUser;
 }
 
 function login() {
-  if (!loginName.value) return alert("Select name");
-  localStorage.setItem("user", loginName.value);
-  currentUser = loginName.value;
-  loginOverlay.style.display = "none";
-  currentUserSpan();
+  const name = document.getElementById("loginName").value;
+  if (!name) return alert("Select name");
+  localStorage.setItem("user", name);
+  currentUser = name;
+  document.getElementById("currentUser").innerText = name;
+  document.getElementById("loginOverlay").style.display = "none";
 }
 
 function switchUser() {
@@ -224,12 +225,7 @@ function switchUser() {
   location.reload();
 }
 
-function currentUserSpan() {
-  currentUserSpanEl = document.getElementById("currentUser");
-  currentUserSpanEl.innerText = currentUser;
-}
-
-function addExpense() {
+function saveExpense() {
   if (!amount.value || !expenseDate.value || !paymentMode.value) {
     alert("Fill amount, date and payment mode");
     return;
@@ -257,7 +253,9 @@ function addExpense() {
 
 function cancelEdit() {
   editId = null;
-  amount.value = note.value = purpose.value = "";
+  amount.value = "";
+  note.value = "";
+  purpose.value = "";
   paymentMode.value = "";
   expenseDate.value = todayStr();
   saveBtn.innerText = "Add Expense";
@@ -270,17 +268,17 @@ ref.on("value", snap => {
 
   const today = todayStr();
   const month = today.slice(0,7);
-  const limitDate = new Date(Date.now() - 30*24*60*60*1000);
+  const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000);
 
-  let total=0, todaySum=0, monthSum=0;
-  expenseList.innerHTML="";
+  let total = 0, todaySum = 0, monthSum = 0;
+  document.getElementById("expenseList").innerHTML = "";
 
   Object.entries(data).forEach(([id,e]) => {
     total += e.amount;
     if (e.date === today) todaySum += e.amount;
     if (e.month === month) monthSum += e.amount;
 
-    if (new Date(e.date) < limitDate) return;
+    if (new Date(e.date) < sevenDaysAgo) return;
 
     const li = document.createElement("li");
     li.innerHTML = `
@@ -291,12 +289,12 @@ ref.on("value", snap => {
         <button class="small-btn danger" onclick="deleteExpense('${id}')">🗑 Delete</button>
       </div>
     `;
-    expenseList.appendChild(li);
+    document.getElementById("expenseList").appendChild(li);
   });
 
-  totalEl.innerText = total;
-  todayTotal.innerText = todaySum;
-  monthTotal.innerText = monthSum;
+  document.getElementById("total").innerText = total;
+  document.getElementById("todayTotal").innerText = todaySum;
+  document.getElementById("monthTotal").innerText = monthSum;
 });
 
 function editExpense(id) {
