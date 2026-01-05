@@ -290,8 +290,8 @@ ref.on("value", snap => {
         <b>${e.date}</b> — ${e.person} — ₹${e.amount}<br>
         ${e.note||"No note"} | ${e.purpose||"No purpose"} | ${e.paymentMode}
         <div class="actions">
-          <button class="small-btn success" onclick="editExpense('${id}')">✏️ Edit</button>
-          <button class="small-btn danger" onclick="deleteExpense('${id}')">🗑 Delete</button>
+          <button class="small-btn success" onclick="editExpense('${id}')">Edit</button>
+          <button class="small-btn danger" onclick="deleteExpense('${id}')">Delete</button>
         </div>
       </li>`;
   });
