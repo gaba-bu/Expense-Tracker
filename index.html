@@ -6,12 +6,7 @@
 <title>Family Expense Tracker</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background:#f4f6f8;
-  margin:0;
-  padding:16px;
-}
+body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:16px; }
 h1 { text-align:center; margin-bottom:8px; }
 
 .card {
@@ -22,11 +17,7 @@ h1 { text-align:center; margin-bottom:8px; }
   box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-label {
-  font-weight:bold;
-  margin-top:12px;
-  display:block;
-}
+label { font-weight:bold; margin-top:12px; display:block; }
 
 input, select, button {
   width:100%;
@@ -37,29 +28,14 @@ input, select, button {
   border:1px solid #ccc;
 }
 
-button {
-  background:#4f46e5;
-  color:#fff;
-  border:none;
-  margin-top:16px;
-}
-
+button { background:#4f46e5; color:#fff; border:none; margin-top:16px; }
 button.secondary { background:#374151; }
 button.danger { background:#dc2626; }
 button.warning { background:#d97706; }
 button.success { background:#059669; }
 
-.row {
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  align-items:center;
-}
-
-.small-btn {
-  padding:6px 10px;
-  font-size:14px;
-}
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.small-btn { padding:6px 10px; font-size:14px; }
 
 ul { list-style:none; padding:0; }
 
@@ -70,11 +46,7 @@ li {
   margin-bottom:10px;
 }
 
-.actions {
-  margin-top:8px;
-  display:flex;
-  gap:6px;
-}
+.actions { margin-top:8px; display:flex; gap:6px; }
 
 /* Sticky totals */
 #totalsBar {
@@ -88,7 +60,7 @@ li {
   z-index:10;
 }
 
-/* Login overlay */
+/* Login */
 #loginOverlay {
   position:fixed;
   inset:0;
@@ -98,7 +70,6 @@ li {
   justify-content:center;
   z-index:999;
 }
-
 #loginBox {
   background:#fff;
   padding:20px;
@@ -128,7 +99,7 @@ li {
 <h1>Family Expense Tracker</h1>
 <p><b>Today:</b> <span id="todayDate"></span></p>
 
-<!-- STICKY TOTALS -->
+<!-- TOTALS -->
 <div id="totalsBar">
   Total ₹ <span id="total">0</span> |
   Today ₹ <span id="todayTotal">0</span> |
@@ -172,6 +143,21 @@ li {
   <button id="cancelEditBtn" class="warning" style="display:none" onclick="cancelEdit()">Cancel Edit</button>
 </div>
 
+<!-- EXPORT -->
+<div class="card">
+  <h3>Export</h3>
+
+  <label>Select Date</label>
+  <input type="date" id="exportDate">
+
+  <div class="row">
+    <button class="success small-btn" onclick="exportSelectedDate()">Export Selected Date</button>
+    <button class="success small-btn" onclick="exportThisMonth()">Export This Month</button>
+  </div>
+
+  <button class="success" onclick="exportAll()">Export All</button>
+</div>
+
 <!-- ALL EXPENSES -->
 <div class="card">
   <h3>All Expenses (Last 7 Days)</h3>
@@ -196,28 +182,24 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("expenses");
 
-function todayStr() {
-  return new Date().toISOString().split("T")[0];
-}
+function todayStr() { return new Date().toISOString().split("T")[0]; }
 
-document.getElementById("todayDate").innerText = todayStr();
-document.getElementById("expenseDate").value = todayStr();
+todayDate.innerText = todayStr();
+expenseDate.value = todayStr();
+exportDate.value = todayStr();
 
 let currentUser = localStorage.getItem("user");
 let editId = null;
 
 if (currentUser) {
-  document.getElementById("loginOverlay").style.display = "none";
-  document.getElementById("currentUser").innerText = currentUser;
+  loginOverlay.style.display = "none";
+  currentUser.innerText = currentUser;
 }
 
 function login() {
-  const name = document.getElementById("loginName").value;
-  if (!name) return alert("Select name");
-  localStorage.setItem("user", name);
-  currentUser = name;
-  document.getElementById("currentUser").innerText = name;
-  document.getElementById("loginOverlay").style.display = "none";
+  if (!loginName.value) return alert("Select name");
+  localStorage.setItem("user", loginName.value);
+  location.reload();
 }
 
 function switchUser() {
@@ -225,6 +207,7 @@ function switchUser() {
   location.reload();
 }
 
+/* SAVE / UPDATE */
 function saveExpense() {
   if (!amount.value || !expenseDate.value || !paymentMode.value) {
     alert("Fill amount, date and payment mode");
@@ -232,7 +215,7 @@ function saveExpense() {
   }
 
   const data = {
-    person: currentUser,
+    person: localStorage.getItem("user"),
     amount: Number(amount.value),
     note: note.value,
     purpose: purpose.value,
@@ -242,26 +225,51 @@ function saveExpense() {
     timestamp: Date.now()
   };
 
-  if (editId) {
-    ref.child(editId).update(data);
-  } else {
-    ref.push(data);
-  }
-
+  editId ? ref.child(editId).update(data) : ref.push(data);
   cancelEdit();
 }
 
 function cancelEdit() {
   editId = null;
-  amount.value = "";
-  note.value = "";
-  purpose.value = "";
+  amount.value = note.value = purpose.value = "";
   paymentMode.value = "";
   expenseDate.value = todayStr();
   saveBtn.innerText = "Add Expense";
   cancelEditBtn.style.display = "none";
 }
 
+/* EXPORT HELPERS */
+function makeCSV(rows, filename) {
+  let csv = "Date,Name,Amount,Note,Purpose,Mode of Payment\n";
+  rows.forEach(e => {
+    csv += `${e.date},${e.person},${e.amount},"${e.note||""}","${e.purpose||""}",${e.paymentMode||""}\n`;
+  });
+  const blob = new Blob([csv], { type:"text/csv" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+}
+
+function exportAll() {
+  ref.once("value", s => makeCSV(Object.values(s.val()||{}), "All_Expenses.csv"));
+}
+
+function exportSelectedDate() {
+  const d = exportDate.value;
+  ref.once("value", s =>
+    makeCSV(Object.values(s.val()||{}).filter(e=>e.date===d), `Expenses_${d}.csv`)
+  );
+}
+
+function exportThisMonth() {
+  const m = todayStr().slice(0,7);
+  ref.once("value", s =>
+    makeCSV(Object.values(s.val()||{}).filter(e=>e.month===m), `Expenses_${m}.csv`)
+  );
+}
+
+/* LISTENER */
 ref.on("value", snap => {
   const data = snap.val();
   if (!data) return;
@@ -270,36 +278,34 @@ ref.on("value", snap => {
   const month = today.slice(0,7);
   const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000);
 
-  let total = 0, todaySum = 0, monthSum = 0;
-  document.getElementById("expenseList").innerHTML = "";
+  let total=0, todaySum=0, monthSum=0;
+  expenseList.innerHTML="";
 
   Object.entries(data).forEach(([id,e]) => {
     total += e.amount;
     if (e.date === today) todaySum += e.amount;
     if (e.month === month) monthSum += e.amount;
-
     if (new Date(e.date) < sevenDaysAgo) return;
 
-    const li = document.createElement("li");
-    li.innerHTML = `
-      <b>${e.date}</b> — ${e.person} — ₹${e.amount}<br>
-      ${e.note || "No note"} | ${e.purpose || "No purpose"} | ${e.paymentMode}
-      <div class="actions">
-        <button class="small-btn success" onclick="editExpense('${id}')">Edit</button>
-        <button class="small-btn danger" onclick="deleteExpense('${id}')">Delete</button>
-      </div>
-    `;
-    document.getElementById("expenseList").appendChild(li);
+    expenseList.innerHTML += `
+      <li>
+        <b>${e.date}</b> — ${e.person} — ₹${e.amount}<br>
+        ${e.note||"No note"} | ${e.purpose||"No purpose"} | ${e.paymentMode}
+        <div class="actions">
+          <button class="small-btn success" onclick="editExpense('${id}')">Edit</button>
+          <button class="small-btn danger" onclick="deleteExpense('${id}')">Delete</button>
+        </div>
+      </li>`;
   });
 
-  document.getElementById("total").innerText = total;
-  document.getElementById("todayTotal").innerText = todaySum;
-  document.getElementById("monthTotal").innerText = monthSum;
+  total.innerText = total;
+  todayTotal.innerText = todaySum;
+  monthTotal.innerText = monthSum;
 });
 
 function editExpense(id) {
-  ref.child(id).once("value", snap => {
-    const e = snap.val();
+  ref.child(id).once("value", s => {
+    const e = s.val();
     editId = id;
     amount.value = e.amount;
     note.value = e.note;
@@ -313,9 +319,7 @@ function editExpense(id) {
 }
 
 function deleteExpense(id) {
-  if (confirm("Delete this expense?")) {
-    ref.child(id).remove();
-  }
+  if (confirm("Delete this expense?")) ref.child(id).remove();
 }
 </script>
 
