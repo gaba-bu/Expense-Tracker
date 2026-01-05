@@ -6,7 +6,12 @@
 <title>Family Expense Tracker</title>
 
 <style>
-body { font-family: Arial, sans-serif; background:#f4f6f8; margin:0; padding:16px; }
+body {
+  font-family: Arial, sans-serif;
+  background:#f4f6f8;
+  margin:0;
+  padding:16px;
+}
 h1 { text-align:center; margin-bottom:8px; }
 
 .card {
@@ -38,13 +43,7 @@ button.success { background:#059669; }
 .small-btn { padding:6px 10px; font-size:14px; }
 
 ul { list-style:none; padding:0; }
-
-li {
-  background:#f9fafb;
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:10px;
-}
+li { background:#f9fafb; padding:12px; border-radius:8px; margin-bottom:10px; }
 
 .actions { margin-top:8px; display:flex; gap:6px; }
 
@@ -135,8 +134,8 @@ li {
     <option>AXIS Bank Credit Card</option>
     <option>Standard Chartered Credit Card</option>
     <option>Bunty HDFC UPI</option>
-    <option>GPay SBI</option>
-    <option>PhonePe BOI</option>
+    <option>GPay BOI</option>
+    <option>PhonePe SBI</option>
   </select>
 
   <button id="saveBtn" onclick="saveExpense()">Add Expense</button>
@@ -146,15 +145,12 @@ li {
 <!-- EXPORT -->
 <div class="card">
   <h3>Export</h3>
-
   <label>Select Date</label>
   <input type="date" id="exportDate">
-
   <div class="row">
     <button class="success small-btn" onclick="exportSelectedDate()">Export Selected Date</button>
     <button class="success small-btn" onclick="exportThisMonth()">Export This Month</button>
   </div>
-
   <button class="success" onclick="exportAll()">Export All</button>
 </div>
 
@@ -182,24 +178,28 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const ref = db.ref("expenses");
 
-function todayStr() { return new Date().toISOString().split("T")[0]; }
+/* DATE */
+function todayStr() {
+  return new Date().toISOString().split("T")[0];
+}
+document.getElementById("todayDate").innerText = todayStr();
+document.getElementById("expenseDate").value = todayStr();
+document.getElementById("exportDate").value = todayStr();
 
-todayDate.innerText = todayStr();
-expenseDate.value = todayStr();
-exportDate.value = todayStr();
-
+/* LOGIN */
 let currentUser = localStorage.getItem("user");
-let editId = null;
-
 if (currentUser) {
-  loginOverlay.style.display = "none";
-  currentUser.innerText = currentUser;
+  document.getElementById("loginOverlay").style.display = "none";
+  document.getElementById("currentUser").innerText = currentUser;
 }
 
 function login() {
-  if (!loginName.value) return alert("Select name");
-  localStorage.setItem("user", loginName.value);
-  location.reload();
+  const name = document.getElementById("loginName").value;
+  if (!name) return alert("Select name");
+  localStorage.setItem("user", name);
+  currentUser = name;
+  document.getElementById("currentUser").innerText = name;
+  document.getElementById("loginOverlay").style.display = "none";
 }
 
 function switchUser() {
@@ -208,6 +208,8 @@ function switchUser() {
 }
 
 /* SAVE / UPDATE */
+let editId = null;
+
 function saveExpense() {
   if (!amount.value || !expenseDate.value || !paymentMode.value) {
     alert("Fill amount, date and payment mode");
@@ -215,7 +217,7 @@ function saveExpense() {
   }
 
   const data = {
-    person: localStorage.getItem("user"),
+    person: currentUser,
     amount: Number(amount.value),
     note: note.value,
     purpose: purpose.value,
@@ -231,14 +233,16 @@ function saveExpense() {
 
 function cancelEdit() {
   editId = null;
-  amount.value = note.value = purpose.value = "";
+  amount.value = "";
+  note.value = "";
+  purpose.value = "";
   paymentMode.value = "";
   expenseDate.value = todayStr();
   saveBtn.innerText = "Add Expense";
   cancelEditBtn.style.display = "none";
 }
 
-/* EXPORT HELPERS */
+/* EXPORT */
 function makeCSV(rows, filename) {
   let csv = "Date,Name,Amount,Note,Purpose,Mode of Payment\n";
   rows.forEach(e => {
@@ -254,19 +258,13 @@ function makeCSV(rows, filename) {
 function exportAll() {
   ref.once("value", s => makeCSV(Object.values(s.val()||{}), "All_Expenses.csv"));
 }
-
 function exportSelectedDate() {
   const d = exportDate.value;
-  ref.once("value", s =>
-    makeCSV(Object.values(s.val()||{}).filter(e=>e.date===d), `Expenses_${d}.csv`)
-  );
+  ref.once("value", s => makeCSV(Object.values(s.val()||{}).filter(e=>e.date===d), `Expenses_${d}.csv`));
 }
-
 function exportThisMonth() {
   const m = todayStr().slice(0,7);
-  ref.once("value", s =>
-    makeCSV(Object.values(s.val()||{}).filter(e=>e.month===m), `Expenses_${m}.csv`)
-  );
+  ref.once("value", s => makeCSV(Object.values(s.val()||{}).filter(e=>e.month===m), `Expenses_${m}.csv`));
 }
 
 /* LISTENER */
@@ -275,16 +273,16 @@ ref.on("value", snap => {
   if (!data) return;
 
   const today = todayStr();
-  const month = today.slice(0,7);
+  const thisMonth = today.slice(0,7);
   const sevenDaysAgo = new Date(Date.now() - 7*24*60*60*1000);
 
-  let total=0, todaySum=0, monthSum=0;
-  expenseList.innerHTML="";
+  let totalSum = 0, todaySum = 0, monthSum = 0;
+  expenseList.innerHTML = "";
 
   Object.entries(data).forEach(([id,e]) => {
-    total += e.amount;
+    totalSum += e.amount;
     if (e.date === today) todaySum += e.amount;
-    if (e.month === month) monthSum += e.amount;
+    if (e.month === thisMonth) monthSum += e.amount;
     if (new Date(e.date) < sevenDaysAgo) return;
 
     expenseList.innerHTML += `
@@ -292,15 +290,15 @@ ref.on("value", snap => {
         <b>${e.date}</b> — ${e.person} — ₹${e.amount}<br>
         ${e.note||"No note"} | ${e.purpose||"No purpose"} | ${e.paymentMode}
         <div class="actions">
-          <button class="small-btn success" onclick="editExpense('${id}')">Edit</button>
-          <button class="small-btn danger" onclick="deleteExpense('${id}')">Delete</button>
+          <button class="small-btn success" onclick="editExpense('${id}')">✏️ Edit</button>
+          <button class="small-btn danger" onclick="deleteExpense('${id}')">🗑 Delete</button>
         </div>
       </li>`;
   });
 
-  total.innerText = total;
-  todayTotal.innerText = todaySum;
-  monthTotal.innerText = monthSum;
+  document.getElementById("total").innerText = totalSum;
+  document.getElementById("todayTotal").innerText = todaySum;
+  document.getElementById("monthTotal").innerText = monthSum;
 });
 
 function editExpense(id) {
